@@ -9,6 +9,11 @@ y = df['Classification'].values
 df = df.drop(columns=['Classification'])
 X = df.values
 
+X_out = ','.join([f"[{','.join([str(e) for e in x])}]" for x in X])
+print(f"X = np.array([{X_out}])")
+print(f"y = np.array([{','.join([str(e) for e in y])}])")
+
+quit()
 skf = StratifiedKFold(n_splits=5, random_state=51, shuffle=True)
 
 for i, (train_index, test_index) in enumerate(skf.split(X, y)):
