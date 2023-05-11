@@ -1,178 +1,137 @@
+import warnings
+from sklearn.exceptions import ConvergenceWarning
+warnings.simplefilter("ignore", category=ConvergenceWarning)
+
+import os
+import utils
 import numpy as np
 
-from sklearn.model_selection import train_test_split
-from sklearn.model_selection import StratifiedKFold
-from sklearn.preprocessing import StandardScaler
-from sklearn.svm import SVC
-from sklearn.metrics import  balanced_accuracy_score
+from multiprocessing.pool import ThreadPool
 
+from pmlb import fetch_data
 from matplotlib import pyplot as plt
 
-from pymoo.core.problem import ElementwiseProblem
-from pmlb import fetch_data
+from pymoo.optimize import minimize
+from pymoo.util.display.column import Column
+from pymoo.operators.sampling.lhs import LHS
+from pymoo.algorithms.soo.nonconvex.de import DE, SingleObjectiveOutput
+from pymoo.core.problem import ElementwiseProblem, StarmapParallelization
 
-import script_configs as configs
 
+def custom_output(OutputClass):
+    
+    class CustomOutput(OutputClass):
+        
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.va_max = Column("va_max", width=8)
+            self.va_mean = Column("va_mean", width=8)
+            self.vi_mean = Column("vi_mean", width=8)
+            self.X_mean = Column("X_mean", width=8)
+            self.columns += [self.va_max, self.va_mean, self.vi_mean, self.X_mean]
+            
+        def update(self, algorithm, *args, **kwargs):
+            super().update(algorithm, *args, **kwargs)
+            self.va_max.set(np.max(algorithm.pop.get("valid_metrics")[:, 0]))
+            self.va_mean.set(np.mean(algorithm.pop.get("valid_metrics")[:, 0]))
+            self.vi_mean.set(np.mean(algorithm.pop.get("valid_metrics")[:, 2]))
+            self.X_mean.set(np.mean(algorithm.pop.get("X")))
+    
+    return CustomOutput()
 
 class MyProblem(ElementwiseProblem):
 
     def __init__(self, **kwargs):
-        
-        X, y = fetch_data('ionosphere', return_X_y=True, local_cache_dir='datasets')
-        Xt, Xv, yt, yv = train_test_split(X, y, test_size=configs.VALIDATION_SIZE, stratify=y, random_state=configs.SEED)
-        
-        self.X = Xt
-        self.y = yt
-        self.Xv = Xv
-        self.yv = yv
-        
-        self.C = 0.1
-        self.dt_iter = 1. / self.y.shape[0]
-        
-        super().__init__(
-            n_var=12, n_obj=2,
-            n_ieq_constr=0, n_eq_constr=0,
-            xl=-1.0, xu=+1.0,
-            elementwise_evaluation=True,
-            **kwargs
-        )
-
-    def _is_positive_semidefinite(self, A: np.ndarray, tol=1e-8) -> bool:
-        
-        E = np.linalg.eigvalsh(A)
-        
-        return np.all(E > -tol)
-
-    def _train_test_svc(self, Xtrain, Xtest, ytrain, ytest, f) -> tuple:
-        
-        _Xtrain = Xtrain.copy()
-        _Xtest = Xtest.copy()
-        _ytrain = ytrain.copy()
-        _ytest = ytest.copy()
-        
-        dim = _Xtrain.shape[1]
-        
-        # escala a entrada
-        scaler  = StandardScaler()
-        _Xtrain = scaler.fit_transform(_Xtrain)
-        _Xtest  = scaler.transform(_Xtest)
-        
-        # criar classificador
-        svc = SVC(C=self.C, kernel='precomputed')
-        
-        # calcula kernel de treino e treina classificador
-        kernel_train = f(np.dot(_Xtrain, _Xtrain.T))
-        kernel_train = (kernel_train + dim) / (2*dim)
-        svc.fit(kernel_train, _ytrain)
-        
-        # calcula kernel de teste e faz inferência
-        kernel_test = f(np.dot(_Xtest, _Xtrain.T))
-        kernel_test = (kernel_test + dim) / (2*dim)
-        ypred = svc.predict(kernel_test)
-        
-        # calcula métricas
-        _acc = balanced_accuracy_score(_ytest, ypred)
-        _iter = svc.n_iter_[0]
-        
-        return (_acc, _iter)
-
-    def training_k_fold_cross_validation(self, f):
-        
-        skf = StratifiedKFold(n_splits=5, random_state=configs.SEED, shuffle=True)
-
-        accs, iters = list(), list()
-
-        for i, (train_index, test_index) in enumerate(skf.split(self.X, self.y)):
-            
-            X_train, X_test = self.X[train_index], self.X[test_index]
-            y_train, y_test = self.y[train_index], self.y[test_index]
-            
-            acc, iter = self._train_test_svc(X_train, X_test, y_train, y_test, f)
-            
-            accs.append(acc)
-            iters.append(iter)
-        
-        acc_mean = np.mean(accs)
-        iter_mean = np.mean(iters)
-        
-        return (acc_mean, iter_mean)
-        
-    def test_validation(self, f):
-        return self._train_test_svc(self.X, self.Xv, self.y, self.yv, f)
+        super().__init__(n_var=2*utils.PADDE_N_M_DEGREE, n_obj=1, n_ieq_constr=0, n_eq_constr=2, xl=-1.0, xu=+1.0, elementwise_evaluation=True, **kwargs)
 
     def _evaluate(self, x, out, *args, **kwargs):
-
-        z = x.copy()
-
-        N = z[:6]
-        D = z[6:]
-
-        def num(r): return ((((N[0]*r + N[1])*r + N[2])*r + N[3])*r + N[4])*r + N[5]
-        def den(r): return ((((D[0]*r + D[1])*r + D[2])*r + D[3])*r + D[4])*r + D[5]
-        def f(r): return num(r) / den(r)
+        pa = utils.get_padde_approx_from_ndarray(z=x.copy())
+        N, D, f = pa['num'], pa['den'], pa['f']
         
-        train_acc, train_iter = self.training_k_fold_cross_validation(f)
-        valid_acc, valid_iter = self.test_validation(f)
+        DX, Dy = fetch_data(utils.DATASET_NAME, return_X_y=True, local_cache_dir='datasets')
+        idx0, idx2 = utils.get_02_idx(arr=DX)
+        X0, X2, y0, y2 = DX[idx0], DX[idx2], Dy[idx0], Dy[idx2],        
         
-        out["F"] = [-1 * train_acc, train_iter]
-        out["valid_metrics"] = (valid_acc, valid_iter)
-         
-from multiprocessing.pool import ThreadPool
-from pymoo.core.problem import StarmapParallelization
-from pymoo.optimize import minimize
-from pymoo.visualization.scatter import Scatter
-from pymoo.algorithms.moo.nsga2 import NSGA2
-from pymoo.algorithms.soo.nonconvex.de import DE
-from pymoo.operators.sampling.lhs import LHS
+        train_acc, train_bacc, train_iter = utils.split_and_train_test_svc(f, X0, y0)
+        valid_acc, valid_bacc, valid_iter = utils.train_test_svc(f, X0, X2, y0, y2)
+        
+        c_eq_0 = utils.ivt_constraint(den=D)
+        c_eq_1 = utils.ev_constraint(dim=X0.shape[1], f=f)
+        
+        out["F"] = 1 - train_bacc +  0.01 * np.log(train_iter)
+        out["H"] = [c_eq_0, c_eq_1]
+        
+        out['train_metrics'] = (train_acc, train_bacc, train_iter)
+        out['valid_metrics'] = (valid_acc, valid_bacc, valid_iter)
 
 def main():
-    n_threads = 40
+    n_threads = 50
     with ThreadPool(n_threads) as pool:
         runner = StarmapParallelization(pool.starmap)
 
         # define the problem by passing the starmap interface of the thread pool
         problem = MyProblem(elementwise_runner=runner)
         
-        ## DEFINIR RESTRIÇÃO DE NÃO TER POLOS NO INTERVALO DA FUNÇÃO
-        nsga2 = NSGA2(pop_size=400,
-                    eliminate_duplicates=True)
-        
-        de = DE(
-            pop_size=250,
+        algorithm = DE(
+            pop_size=25,
             sampling=LHS(),
-            variant="DE/rand/1/bin",
-            CR=0.3,
+            variant="DE/rand/1/exp",
+            CR=0.9,
             dither="vector",
             jitter=False
         )
 
-        print(50*'=')
-        print('Seed:', configs.SEED)
-        print('Pymoo seed', configs.PYMOO_SEED)
-        res = minimize(problem, nsga2, termination=("n_gen", 25), seed=configs.PYMOO_SEED, verbose=True, save_history=False)
+        print('Seed:', utils.SEED)
+        res = minimize(problem, algorithm, termination=("n_gen", 40), verbose=True, save_history=True, output=custom_output(SingleObjectiveOutput))
         print('Execution time:', res.exec_time/60.)
-        print('Best solution:', res.X)
-        print(50*'=')
-
-        sx, sy, sc = list(), list(), list()
-
-        for X in res.X:
-            mp = MyProblem()
-            d = {}
-            mp._evaluate(X, d)
-            
-            
-            _acc, _iter = d['F']
-            _valid_acc, _valid_iter = d['valid_metrics']
-            
-            print((_acc, _iter), (_valid_acc, _valid_iter))
+        print('Best solution:', res.X, res.F)
         
-        plot = Scatter()
-        plot.add(problem.pareto_front(), plot_type="line", color="black", alpha=0.7)
-        plot.add(res.F, facecolor="none", edgecolor="red")
-        plot.show()
-                
-    return
+        first_n = 5
+        F_pop, X_pop = res.pop.get('F'), res.pop.get('X')
+        args_sorted = np.argsort(-1 * res.pop.get('valid_metrics')[:, 0])
+        args = args_sorted[:first_n]
+        
+        SAVE_FOLDER = 'results'
+        os.makedirs(SAVE_FOLDER, exist_ok=True)
+        
+        
+        my_Cs = list()
+        
+        for z in X_pop[args]:
+            x = np.linspace(utils.LOW, utils.HIGH, 1000)
+            y = utils.get_padde_approx_from_ndarray(z)['f'](x)
+            y = (y - min(y)) / (max(y) - min(y))
+            
+            d = {}
+            MyProblem()._evaluate(z, d)
+    
+            F = d['F']
+            acc, bacc, iter = d['train_metrics']
+            acc, bacc, iter = round(acc, 5), round(bacc, 5), round(iter, 5)
+            valid_acc, valid_bacc, valid_iter = d['valid_metrics']
+            valid_acc, valid_bacc, valid_iter = round(valid_acc, 5), round(valid_bacc, 5), round(valid_iter, 5)
+            print(z)
+            print('F:', F, 'C:', utils.SVC_C, 'acc:', acc, 'bacc:', bacc, 'iter:', iter, 'valid_acc', valid_acc, 'valid_bacc', valid_bacc, 'valid_iter', valid_iter)
+            
+            plt.plot(x, y, label='C={}, VA={}'.format(utils.SVC_C, round(valid_acc * 100, 2)))
+            
+        plt.xlim(utils.LOW, utils.HIGH)
+        plt.legend()
+        plt.savefig(os.path.join(SAVE_FOLDER, '-'.join([utils.DATASET_NAME, str(utils.SEED), str(utils.CURRENT_K_SPLIT), str(utils.SVC_C), '.png'])), dpi=300)
+        plt.close()
         
 if __name__ == '__main__':
-    main()
+    
+    N_EXPERIMENTS = 30
+    SEEDs = np.random.randint(low=2, high=99999, size=N_EXPERIMENTS)
+    Cs = [0.03125, 0.125, 0.5, 2.0, 8.0, 32.0, 128.0, 512.0, 2048.0]
+    
+    for c in Cs:
+        for s in SEEDs:
+            utils.SVC_C = c
+            utils.SEED = s
+        
+            for i in range(utils.VALIDATION_K_SPLITS):
+                utils.CURRENT_K_SPLIT = i
+                
+                main()
