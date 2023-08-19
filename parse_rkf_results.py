@@ -1,48 +1,55 @@
-import numpy as np
-import time
-import pandas as pd
 import os
+import time
 import joblib
-from tqdm import tqdm
-from script import RKFP
-from multiprocessing import Pool as ProcessPool
+import numpy as np
+import pandas as pd
+
+
+from rkf import RKFP
 from functools import reduce
+from multiprocessing import Pool as ProcessPool
 
 
 def job2bdone(filename):
     
     try:
-        N_SPLITS, TEST_SIZE = 4, 0.20
-        EV_CHECK, IVT_CHECK = False, True
-        
-        _, dataset, C, degree, hist_seed = filename.split(os.sep)
+        algo_params, dataset, C, degree, hist_seed = filename.split(os.sep)
+        _, n_splits, test_size, ev_check, ivt_check, n_pop, n_gen = algo_params.split('-')
         _, seed = hist_seed.replace('.joblib', '').split('-')
         
         C = float(C)
         degree = int(degree)
         seed = int(seed)
+        n_splits = int(n_splits)
+        test_size = float(test_size)
+        ev_check = bool(ev_check)
+        ivt_check = bool(ivt_check)
+        n_pop = int(n_pop)
+        n_gen = int(n_gen)
         
         rkfp = RKFP(
             C=C, degree=degree, dset=dataset,
-            n_splits=N_SPLITS, test_size=TEST_SIZE,
-            ev_check=EV_CHECK, ivt_check=IVT_CHECK, seed=seed
+            n_splits=n_splits, test_size=test_size,
+            ev_check=ev_check, ivt_check=ivt_check, seed=seed
         )
         
         hist = joblib.load(filename)
         acc_xs = [rkfp._evaluate2(x=x) for x in hist[-1].pop.get('X')]
-        accuracy = np.max([u[0] for u in acc_xs])
+        best_valid_acc = np.max([u[0] for u in acc_xs])
+        Md_valid_acc = np.median([u[0] for u in acc_xs])
+        Mn_valid_acc = np.mean([u[0] for u in acc_xs])
         
-        print(dataset, degree, C, seed)
-        print(accuracy)
         
-        return (dataset, C, degree, accuracy, seed)
+        print(dataset, degree, C, round(100*best_valid_acc, 2), round(100*Md_valid_acc, 2), round(100*Mn_valid_acc, 2), seed)
+        
+        return (dataset, C, degree, best_valid_acc, Md_valid_acc, Mn_valid_acc, seed)
     except Exception as e:
-        print(f'deu ruim {filename}')
+        print(f'deu ruim {filename}', e)
 
 
 def main():
     
-    folder = 'nothing2'
+    folder = 'exec-5-0.2-False-False-30-50'
     files = os.walk(folder)
     files = filter(lambda x: not x[1], files)
     files = filter(lambda x: 'pima' in x[0], files)
@@ -58,20 +65,24 @@ def main():
     data['seed'] = list()
     data['dataset'] = list()
     data['degree'] = list()
-    data['accuracy'] = list()
+    data['best_valid_acc'] = list()
+    data['Md_valid_acc'] = list()
+    data['Mn_valid_acc'] = list()
     
     begin = time.perf_counter()
 
-    with ProcessPool(processes=os.cpu_count()-1) as pool:
+    with ProcessPool(processes=os.cpu_count()) as pool:
         results = pool.map(job2bdone, files)
         
         for result in results:
-            dataset, C, degree, accuracy, seed = result
+            dataset, C, degree, best_valid_acc, Md_valid_acc, Mn_valid_acc, seed = result
             data['C'].append(C)
             data['seed'].append(seed)
             data['dataset'].append(dataset)
             data['degree'].append(degree)
-            data['accuracy'].append(accuracy)
+            data['best_valid_acc'].append(best_valid_acc)
+            data['Md_valid_acc'].append(Md_valid_acc)
+            data['Mn_valid_acc'].append(Mn_valid_acc)
     
     end = time.perf_counter()
     print(f'done in {end-begin} seconds')
@@ -80,5 +91,4 @@ def main():
         f'{folder}.csv', index=False, sep=';'
     )
             
-if __name__ == '__main__':
-    main()
+if __name__ == '__main__': main()
