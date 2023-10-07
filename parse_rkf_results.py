@@ -13,46 +13,51 @@ from multiprocessing import Pool as ProcessPool
 def job2bdone(filename):
     
     try:
-        algo_params, dataset, C, degree, hist_seed = filename.split(os.sep)
-        _, n_splits, test_size, ev_check, ivt_check, n_pop, n_gen = algo_params.split('-')
+        algo_params, dataset, C, n_coefs, hist_seed = filename.split(os.sep)
+        _, n_splits, test_size, n_pop, n_gen = algo_params.split('-')
         _, seed = hist_seed.replace('.joblib', '').split('-')
         
-        C = float(C)
-        degree = int(degree)
+        
         seed = int(seed)
+        C = float(C)
+        n_coefs = int(n_coefs)
         n_splits = int(n_splits)
         test_size = float(test_size)
-        ev_check = bool(ev_check)
-        ivt_check = bool(ivt_check)
         n_pop = int(n_pop)
         n_gen = int(n_gen)
         
         rkfp = RKFP(
-            C=C, degree=degree, dset=dataset,
-            n_splits=n_splits, test_size=test_size,
-            ev_check=ev_check, ivt_check=ivt_check, seed=seed
+            C=C, n_coefs=n_coefs, dset=dataset,
+            n_splits=n_splits, test_size=test_size, seed=seed
         )
         
         hist = joblib.load(filename)
-        acc_xs = [rkfp._evaluate2(x=x) for x in hist[-1].pop.get('X')]
-        best_valid_acc = np.max([u[0] for u in acc_xs])
-        Md_valid_acc = np.median([u[0] for u in acc_xs])
-        Mn_valid_acc = np.mean([u[0] for u in acc_xs])
+        valid_metrics = np.array(list(zip(hist[-1].pop.get('valid_bas'), hist[-1].pop.get('valid_itr'), hist[-1].pop.get('valid_nsv'))))
+        test_metrics = np.array([rkfp._evaluate2(x=x) for x in hist[-1].pop.get('X')])
         
+        best_X_argmin = np.argmin(hist[-1].pop.get('F'))
         
-        print(dataset, degree, C, round(100*best_valid_acc, 2), round(100*Md_valid_acc, 2), round(100*Mn_valid_acc, 2), seed)
+        F = hist[-1].pop.get('F')[best_X_argmin][0] * -1
+        X_valid_bas, X_valid_itr, X_valid_nsv = valid_metrics[best_X_argmin]
+        X_test_bas, X_test_itr, X_test_nsv = test_metrics[best_X_argmin]
         
-        return (dataset, C, degree, best_valid_acc, Md_valid_acc, Mn_valid_acc, seed)
+        print('done:', filename)
+        
+        return (
+            dataset, seed, C, n_coefs, F,
+            X_valid_bas, X_valid_itr, X_valid_nsv,
+            X_test_bas, X_test_itr, X_test_nsv,
+        )
     except Exception as e:
         print(f'deu ruim {filename}', e)
+        return None
 
 
 def main():
     
-    folder = 'exec-5-0.2-False-False-30-50'
+    folder = 'basrkf-5-0.2-30-40'
     files = os.walk(folder)
     files = filter(lambda x: not x[1], files)
-    files = filter(lambda x: 'pima' in x[0], files)
     files = map(lambda x: (x[0], list(filter(lambda y: 'hist' in y, x[2]))), files)
     files = map(lambda x: list(map(lambda y: os.path.join(x[0], y), x[1])), files)
     files = reduce(lambda x,y: list(list(x) + list(y)), files)
@@ -61,13 +66,17 @@ def main():
     print('length of files:', len(files))
 
     data = dict()
-    data['C'] = list()
-    data['seed'] = list()
     data['dataset'] = list()
-    data['degree'] = list()
-    data['best_valid_acc'] = list()
-    data['Md_valid_acc'] = list()
-    data['Mn_valid_acc'] = list()
+    data['seed'] = list()
+    data['C'] = list()
+    data['n_coefs'] = list()
+    data['F'] = list()
+    data['X_valid_bas'] = list()
+    data['X_valid_itr'] = list()
+    data['X_valid_nsv'] = list()
+    data['X_test_bas'] = list()
+    data['X_test_itr'] = list()
+    data['X_test_nsv'] = list()
     
     begin = time.perf_counter()
 
@@ -75,14 +84,19 @@ def main():
         results = pool.map(job2bdone, files)
         
         for result in results:
-            dataset, C, degree, best_valid_acc, Md_valid_acc, Mn_valid_acc, seed = result
-            data['C'].append(C)
-            data['seed'].append(seed)
+            dataset, seed, C, n_coefs, F, X_valid_bas, X_valid_itr, X_valid_nsv, X_test_bas, X_test_itr, X_test_nsv = result
+            
             data['dataset'].append(dataset)
-            data['degree'].append(degree)
-            data['best_valid_acc'].append(best_valid_acc)
-            data['Md_valid_acc'].append(Md_valid_acc)
-            data['Mn_valid_acc'].append(Mn_valid_acc)
+            data['seed'].append(seed)
+            data['C'].append(C)
+            data['n_coefs'].append(n_coefs)
+            data['F'].append(F)
+            data['X_valid_bas'].append(X_valid_bas)
+            data['X_valid_itr'].append(X_valid_itr)
+            data['X_valid_nsv'].append(X_valid_nsv)
+            data['X_test_bas'].append(X_test_bas)
+            data['X_test_itr'].append(X_test_itr)
+            data['X_test_nsv'].append(X_test_nsv)
     
     end = time.perf_counter()
     print(f'done in {end-begin} seconds')
