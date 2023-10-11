@@ -36,11 +36,11 @@ def get_figsize(
 
 plt.rcParams.update({
     'figure.figsize' : get_figsize(columnwidth=455.0, unit='pt'),
-    "axes.labelsize": 12,
-    "font.size": 12,
-    "legend.fontsize": 12,
-    "xtick.labelsize": 12,
-    "ytick.labelsize": 12,
+    "axes.labelsize": 16,
+    "font.size": 16,
+    "legend.fontsize": 16,
+    "xtick.labelsize": 16,
+    "ytick.labelsize": 16,
 })
 
 n2print = 5
@@ -86,24 +86,28 @@ best_rkf_bas_test_values = rkf.loc[(rkf['dataset'] == dataset) & (rkf['C'] == be
 best_rkf_itr_test_values = rkf.loc[(rkf['dataset'] == dataset) & (rkf['C'] == best_C_rkf) & (rkf['n_coefs'] == best_n_coefs_rkf)]['X_test_itr'].values
 best_rkf_nsv_test_values = rkf.loc[(rkf['dataset'] == dataset) & (rkf['C'] == best_C_rkf) & (rkf['n_coefs'] == best_n_coefs_rkf)]['X_test_nsv'].values
 
-def plot_double_boxplot(label1, data1, label2, data2, filename):
+def plot_double_boxplot(label1, data1, label2, data2, filename, xlabel, ylabel, loc=None):
     fig, ax = plt.subplots()
 
     # Create a list of data to plot
     data_to_plot = [data1, data2]
 
     ax.boxplot(data_to_plot, labels=[label1, label2])
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
     plt.tight_layout()
-    plt.savefig(f'{filename}.pdf', format='pdf', bbox_inches='tight')
+    plt.savefig(f'{filename}.pdf', format='pdf', bbox_inches='tight', pad_inches=0)
     plt.clf()
 
-def plot_double_hist(label1, data1, label2, data2, filename):
+def plot_double_hist(label1, data1, label2, data2, filename, xlabel, ylabel, loc=None):
 
     plt.hist(data1, label=label1, bins=8, alpha=.7, color='red', edgecolor='black')
     plt.hist(data2, label=label2, bins=8, alpha=.7, color='yellow', edgecolor='black')
-    plt.legend()
+    plt.legend(loc=loc)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
     plt.tight_layout()
-    plt.savefig(f'{filename}.pdf', format='pdf', bbox_inches='tight')
+    plt.savefig(f'{filename}.pdf', format='pdf', bbox_inches='tight', pad_inches=0)
     plt.clf()
 
 def perform_shapiro_wilk_test(label, data, alpha=0.05):
@@ -152,32 +156,32 @@ def perform_wilcoxon_signed_rank_test(label1, data1, label2, data2, alpha=0.05):
     
     print()
 
-plot_double_hist('RBF', best_rbf_bas_valid_values, 'Racional', best_rkf_bas_valid_values, 'treino-bas')
+plot_double_hist('RBF', best_rbf_bas_valid_values, 'Racional', best_rkf_bas_valid_values, 'treino-bas', xlabel='Acurácia balanceada', ylabel='Frequência', loc='best')
 perform_shapiro_wilk_test('RBF BAStr', best_rbf_bas_valid_values, alpha=0.05)
 perform_shapiro_wilk_test('Racional BAStr', best_rkf_bas_valid_values, alpha=0.05)
 perform_paired_t_test('RBF BAStr', best_rbf_bas_valid_values, 'Racional BAStr', best_rkf_bas_valid_values, alpha=0.05)
 
-plot_double_boxplot('RBF', best_rbf_itr_valid_values, 'Racional', best_rkf_itr_valid_values, 'treino-itr')
+plot_double_boxplot('RBF', best_rbf_itr_valid_values, 'Racional', best_rkf_itr_valid_values, 'treino-itr', xlabel='Abordagem', ylabel='Porcentagem')
 perform_shapiro_wilk_test('RBF ITRtr', best_rbf_itr_valid_values, alpha=0.05)
 perform_shapiro_wilk_test('Racional ITRtr', best_rkf_itr_valid_values, alpha=0.05)
 perform_wilcoxon_signed_rank_test('RBF ITRtr', best_rbf_itr_valid_values, 'Racional ITRtr', best_rkf_itr_valid_values, alpha=0.05)
 
-plot_double_boxplot('RBF', best_rbf_nsv_valid_values, 'Racional', best_rkf_nsv_valid_values, 'treino-nsv')
+plot_double_boxplot('RBF', best_rbf_nsv_valid_values, 'Racional', best_rkf_nsv_valid_values, 'treino-nsv', xlabel='Abordagem', ylabel='Porcentagem')
 perform_shapiro_wilk_test('RBF NSVtr', best_rbf_nsv_valid_values, alpha=0.05)
 perform_shapiro_wilk_test('Racional NSVtr', best_rkf_nsv_valid_values, alpha=0.05)
 perform_wilcoxon_signed_rank_test('RBF NSVtr', best_rbf_nsv_valid_values, 'Racional NSVtr', best_rkf_nsv_valid_values, alpha=0.05)
 
-plot_double_hist('RBF', best_rbf_bas_test_values, 'Racional', best_rkf_bas_test_values, 'teste-bas')
+plot_double_hist('RBF', best_rbf_bas_test_values, 'Racional', best_rkf_bas_test_values, 'teste-bas', xlabel='Acurácia balanceada', ylabel='Frequência')
 perform_shapiro_wilk_test('RBF BASte', best_rbf_bas_test_values, alpha=0.05)
 perform_shapiro_wilk_test('Racional BASte', best_rkf_bas_test_values, alpha=0.05)
 perform_wilcoxon_signed_rank_test('RBF BASte', best_rbf_bas_test_values, 'Racional BASte', best_rkf_bas_test_values, alpha=0.05)
 
-plot_double_boxplot('RBF', best_rbf_itr_test_values, 'Racional', best_rkf_itr_test_values, 'teste-itr')
+plot_double_boxplot('RBF', best_rbf_itr_test_values, 'Racional', best_rkf_itr_test_values, 'teste-itr', xlabel='Abordagem', ylabel='Porcentagem')
 perform_shapiro_wilk_test('RBF ITRte', best_rbf_itr_test_values, alpha=0.05)
 perform_shapiro_wilk_test('Racional ITRte', best_rkf_itr_test_values, alpha=0.05)
 perform_wilcoxon_signed_rank_test('RBF ITRte', best_rbf_itr_test_values, 'Racional ITRte', best_rkf_itr_test_values, alpha=0.05)
 
-plot_double_boxplot('RBF', best_rbf_nsv_test_values, 'Racional', best_rkf_nsv_test_values, 'teste-nsv')
+plot_double_boxplot('RBF', best_rbf_nsv_test_values, 'Racional', best_rkf_nsv_test_values, 'teste-nsv', xlabel='Abordagem', ylabel='Porcentagem')
 perform_shapiro_wilk_test('RBF NSVte', best_rbf_nsv_test_values, alpha=0.05)
 perform_shapiro_wilk_test('Racional NSVte', best_rkf_nsv_test_values, alpha=0.05)
 perform_wilcoxon_signed_rank_test('RBF NSVte', best_rbf_nsv_test_values, 'Racional NSVte', best_rkf_nsv_test_values, alpha=0.05)

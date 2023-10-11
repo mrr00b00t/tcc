@@ -73,6 +73,8 @@ def plot_svc_decision_boundary(svm_clf):
 
 # Plotting the decision boundary and support vectors
 plot_svc_decision_boundary(svm_clf)
+plt.xlabel('Atributo 1')
+plt.ylabel('Atributo 2')
 plt.tight_layout()
-plt.savefig('svm-nao-linear.pdf', format='pdf', bbox_inches='tight')
+plt.savefig('svm-nao-linear.pdf', format='pdf', bbox_inches='tight', pad_inches=0)
 plt.clf()

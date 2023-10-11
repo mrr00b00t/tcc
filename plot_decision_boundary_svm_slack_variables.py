@@ -71,6 +71,8 @@ def plot_svc_decision_boundary(svm_clf, xmin, xmax):
 # Plotting the decision boundary
 plot_svc_decision_boundary(svm_clf, X[:, 0].min()-1, X[:, 0].max()+1)
 plt.scatter(X[:, 0], X[:, 1], c=y, cmap=plt.cm.coolwarm)
+plt.xlabel('Atributo 1')
+plt.ylabel('Atributo 2')
 plt.tight_layout()
-plt.savefig('svm-margem-flexivel.pdf', format='pdf', bbox_inches='tight')
+plt.savefig('svm-margem-flexivel.pdf', format='pdf', bbox_inches='tight', pad_inches=0)
 plt.clf()

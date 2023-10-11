@@ -21,3 +21,14 @@ SEEDS = [
 POPS_SIZE = [30]
 NS_GEN = [40]
 SVC_MAX_ITER = 1800
+
+
+if __name__ == '__main__':
+
+    for dset in DSETS:
+        from pmlb import fetch_data
+        
+        X, y = fetch_data(dataset_name=dset, return_X_y=True, local_cache_dir='datasets')
+        
+        print('X shape:', X.shape)
+        print('y shape', y.shape)
