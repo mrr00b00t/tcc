@@ -79,6 +79,7 @@ class RKFP(ElementwiseProblem):
         nsv = np.mean(l_nsv)
 
         out['F'] = -1 * bas + (self.n_splits / yn.shape[0]) * ((itr / SVC_MAX_ITER) + nsv)
+        #out['F'] = -1 * bas + 0.5 * (itr / SVC_MAX_ITER + nsv)
 
         out['valid_bas'], out['valid_itr'], out['valid_nsv'] = bas, itr, nsv
         out['test_bas'], out['test_itr'], out['test_nsv'] = self._evaluate2(x=x.copy())

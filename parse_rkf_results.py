@@ -55,7 +55,7 @@ def job2bdone(filename):
 
 def main():
     
-    folder = 'basrkf-5-0.2-30-40'
+    folder = 'bas6rkf-4-0.2-30-40'
     files = os.walk(folder)
     files = filter(lambda x: not x[1], files)
     files = map(lambda x: (x[0], list(filter(lambda y: 'hist' in y, x[2]))), files)
