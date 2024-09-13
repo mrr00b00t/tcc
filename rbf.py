@@ -11,7 +11,7 @@ from sklearn.metrics import balanced_accuracy_score
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split, StratifiedKFold
 
-from configs import PREFIX, CS, MIN_GAMMA, MAX_GAMMA, DSETS, NS_SPLITS, TEST_SIZES, SEEDS, POPS_SIZE, NS_GEN, SVC_MAX_ITER
+from configs import PREFIX, CS, MIN_GAMMA, MAX_GAMMA, DSETS, NS_SPLITS, TEST_SIZES, SEEDS, POPS_SIZE, NS_GEN, MAX_ITER
 
 from sklearn.utils._testing import ignore_warnings
 from sklearn.exceptions import ConvergenceWarning
@@ -44,7 +44,7 @@ def job2bdone(_input):
         X0s = rs.fit_transform(X0)
         X1s = rs.transform(X1)
     
-        svc = SVC(C=C, kernel='rbf', gamma=gamma, max_iter=SVC_MAX_ITER)
+        svc = SVC(C=C, kernel='rbf', gamma=gamma, max_iter=MAX_ITER)
         svc.fit(X0s, y0)
         yp = svc.predict(X1s)
         
@@ -58,7 +58,7 @@ def job2bdone(_input):
     Xvs = rs.fit_transform(Xv)
     Xts = rs.transform(Xt)
     
-    svc = SVC(C=C, kernel='rbf', gamma=gamma, max_iter=SVC_MAX_ITER)
+    svc = SVC(C=C, kernel='rbf', gamma=gamma, max_iter=MAX_ITER)
     svc.fit(Xvs, yv)
     yp = svc.predict(Xts)
     

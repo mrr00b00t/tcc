@@ -2,7 +2,7 @@ import locale
 import pandas as pd
 from scipy import stats
 import matplotlib.pyplot as plt
-from configs import SVC_MAX_ITER
+from configs import MAX_ITER
 
 
 locale.setlocale(locale.LC_ALL, "pt_BR.utf8")
@@ -46,12 +46,12 @@ plt.rcParams.update({
 n2print = 5
 
 rkf = pd.read_csv('basrkf-5-0.2-30-40.csv', sep=';')
-rkf['X_valid_itr'] = rkf['X_valid_itr'].apply(lambda x: x / SVC_MAX_ITER )
-rkf['X_test_itr'] = rkf['X_test_itr'].apply(lambda x: x / SVC_MAX_ITER )
+rkf['X_valid_itr'] = rkf['X_valid_itr'].apply(lambda x: x / MAX_ITER )
+rkf['X_test_itr'] = rkf['X_test_itr'].apply(lambda x: x / MAX_ITER )
 
 rbf = pd.read_csv('basrbf-5-0.2-30-40.csv', sep=';')
-rbf['valid_itr'] = rbf['valid_itr'].apply(lambda x: x / SVC_MAX_ITER )
-rbf['test_itr'] = rbf['test_itr'].apply(lambda x: x / SVC_MAX_ITER )
+rbf['valid_itr'] = rbf['valid_itr'].apply(lambda x: x / MAX_ITER )
+rbf['test_itr'] = rbf['test_itr'].apply(lambda x: x / MAX_ITER )
 
 rbfg = rbf.groupby(['dataset', 'C', 'gamma'], as_index=False).mean().sort_values(by='valid_bas', ascending=False)[:n2print]
 print(rbfg)
