@@ -1,14 +1,16 @@
 import os
 import joblib
 import numpy as np
+
 from pmlb import fetch_data
 from itertools import product
 from multiprocessing.pool import Pool
 
+from sklearn.model_selection import StratifiedKFold, train_test_split
 from sklearn.svm import SVC
 from sklearn.metrics import balanced_accuracy_score, pairwise_distances
 from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split, StratifiedKFold
+
 
 from pymoo.optimize import minimize
 from pymoo.algorithms.soo.nonconvex.de import DE
@@ -105,13 +107,15 @@ class RKFP(ElementwiseProblem):
         
         return balanced_accuracy_score(y_true=y1, y_pred=yp), np.mean(svc.n_iter_), svc.support_.shape[0] / X0s.shape[0]
 
+
 def job2bdone(p):
     C, n_coefs, dset, n_splits, test_size, seed, pop_size, n_gen = p
                     
     save_dir = os.path.join(f'{PREFIX}rkf-{n_splits}-{test_size}-{pop_size}-{n_gen}', dset, str(C), str(n_coefs))
     hist_path = os.path.join(save_dir, f'hist-{seed}.joblib')
     
-    if os.path.exists(hist_path): return 'already done'
+    if os.path.exists(hist_path):
+        return 'already done'
     
     rkfp = RKFP(
         C=C, n_coefs=n_coefs, dset=dset,
@@ -127,13 +131,16 @@ def job2bdone(p):
     
     return 'done'
 
+
 def main():
     products = product(CS, NS_COEFS, DSETS, NS_SPLITS, TEST_SIZES, SEEDS, POPS_SIZE, NS_GEN)
-    
+
     results = None
-    with Pool(processes=os.cpu_count() // 2) as pool:
+    with Pool(processes=os.cpu_count()) as pool:
         results = pool.map(job2bdone, products)
-    
+
     print(results)
 
-if __name__ == '__main__': main()
+
+if __name__ == '__main__':
+    main()

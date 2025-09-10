@@ -5,7 +5,10 @@ import matplotlib.pyplot as plt
 from configs import SVC_MAX_ITER
 
 
-locale.setlocale(locale.LC_ALL, "pt_BR.utf8")
+try:
+    locale.setlocale(locale.LC_ALL, "pt_BR.utf8")
+except:
+    locale.setlocale(locale.LC_ALL, "pt_BR.UTF-8")
 
 plt.rcParams.update({
     'axes.formatter.use_locale' : True,
@@ -62,7 +65,7 @@ print(rkfg)
 print()
 
 
-dataset = 'pima'
+dataset = 'bupa'
 
 rbfg_r = rbfg.iloc[0]
 best_C_rbf, best_gamma_rbf = rbfg_r.C, rbfg_r.gamma
@@ -92,7 +95,7 @@ def plot_double_boxplot(label1, data1, label2, data2, filename, xlabel, ylabel, 
     # Create a list of data to plot
     data_to_plot = [data1, data2]
 
-    ax.boxplot(data_to_plot, labels=[label1, label2])
+    ax.boxplot(data_to_plot, tick_labels=[label1, label2])
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.tight_layout()
@@ -120,11 +123,11 @@ def perform_shapiro_wilk_test(label, data, alpha=0.05):
 
     # Check p-value against alpha
     if p_value > alpha:
-        print(f'Data {label} appears to be normally distributed (fail to reject H0)')
+        print(f'Data {label} appears to be normally distributed (fail to reject H0)\n')
+        return True
     else:
-        print(f'Data {label} does not appear to be normally distributed (reject H0)')
-
-    print()
+        print(f'Data {label} does not appear to be normally distributed (reject H0)\n')
+        return False
 
 def perform_paired_t_test(label1, data1, label2, data2, alpha=0.05):
 
@@ -157,31 +160,49 @@ def perform_wilcoxon_signed_rank_test(label1, data1, label2, data2, alpha=0.05):
     print()
 
 plot_double_hist('RBF', best_rbf_bas_valid_values, 'Racional', best_rkf_bas_valid_values, 'treino-bas', xlabel='Acurácia balanceada', ylabel='Frequência', loc='best')
-perform_shapiro_wilk_test('RBF BAStr', best_rbf_bas_valid_values, alpha=0.05)
-perform_shapiro_wilk_test('Racional BAStr', best_rkf_bas_valid_values, alpha=0.05)
-perform_paired_t_test('RBF BAStr', best_rbf_bas_valid_values, 'Racional BAStr', best_rkf_bas_valid_values, alpha=0.05)
+s1 = perform_shapiro_wilk_test('RBF BAStr', best_rbf_bas_valid_values, alpha=0.05)
+s2 = perform_shapiro_wilk_test('Racional BAStr', best_rkf_bas_valid_values, alpha=0.05)
+if s1 and s2:
+    perform_paired_t_test('RBF BAStr', best_rbf_bas_valid_values, 'Racional BAStr', best_rkf_bas_valid_values, alpha=0.05)
+else:
+    perform_shapiro_wilk_test('RBF BAStr', best_rbf_bas_valid_values, 'Racional BAStr', best_rkf_bas_valid_values, alpha=0.05)
 
 plot_double_boxplot('RBF', best_rbf_itr_valid_values, 'Racional', best_rkf_itr_valid_values, 'treino-itr', xlabel='Abordagem', ylabel='Porcentagem')
-perform_shapiro_wilk_test('RBF ITRtr', best_rbf_itr_valid_values, alpha=0.05)
-perform_shapiro_wilk_test('Racional ITRtr', best_rkf_itr_valid_values, alpha=0.05)
-perform_wilcoxon_signed_rank_test('RBF ITRtr', best_rbf_itr_valid_values, 'Racional ITRtr', best_rkf_itr_valid_values, alpha=0.05)
+s1 = perform_shapiro_wilk_test('RBF ITRtr', best_rbf_itr_valid_values, alpha=0.05)
+s2 = perform_shapiro_wilk_test('Racional ITRtr', best_rkf_itr_valid_values, alpha=0.05)
+if s1 and s2:
+    perform_paired_t_test('RBF ITRtr', best_rbf_itr_valid_values, 'Racional ITRtr', best_rkf_itr_valid_values, alpha=0.05)
+else:
+    perform_wilcoxon_signed_rank_test('RBF ITRtr', best_rbf_itr_valid_values, 'Racional ITRtr', best_rkf_itr_valid_values, alpha=0.05)
 
 plot_double_boxplot('RBF', best_rbf_nsv_valid_values, 'Racional', best_rkf_nsv_valid_values, 'treino-nsv', xlabel='Abordagem', ylabel='Porcentagem')
-perform_shapiro_wilk_test('RBF NSVtr', best_rbf_nsv_valid_values, alpha=0.05)
-perform_shapiro_wilk_test('Racional NSVtr', best_rkf_nsv_valid_values, alpha=0.05)
-perform_wilcoxon_signed_rank_test('RBF NSVtr', best_rbf_nsv_valid_values, 'Racional NSVtr', best_rkf_nsv_valid_values, alpha=0.05)
+s1 = perform_shapiro_wilk_test('RBF NSVtr', best_rbf_nsv_valid_values, alpha=0.05)
+s2 = perform_shapiro_wilk_test('Racional NSVtr', best_rkf_nsv_valid_values, alpha=0.05)
+if s1 and s2:
+    perform_paired_t_test('RBF NSVtr', best_rbf_nsv_valid_values, 'Racional NSVtr', best_rkf_nsv_valid_values, alpha=0.05)
+else:
+    perform_wilcoxon_signed_rank_test('RBF NSVtr', best_rbf_nsv_valid_values, 'Racional NSVtr', best_rkf_nsv_valid_values, alpha=0.05)
 
 plot_double_hist('RBF', best_rbf_bas_test_values, 'Racional', best_rkf_bas_test_values, 'teste-bas', xlabel='Acurácia balanceada', ylabel='Frequência')
-perform_shapiro_wilk_test('RBF BASte', best_rbf_bas_test_values, alpha=0.05)
-perform_shapiro_wilk_test('Racional BASte', best_rkf_bas_test_values, alpha=0.05)
-perform_wilcoxon_signed_rank_test('RBF BASte', best_rbf_bas_test_values, 'Racional BASte', best_rkf_bas_test_values, alpha=0.05)
+s1 = perform_shapiro_wilk_test('RBF BASte', best_rbf_bas_test_values, alpha=0.05)
+s2 = perform_shapiro_wilk_test('Racional BASte', best_rkf_bas_test_values, alpha=0.05)
+if s1 and s2:
+    perform_paired_t_test('RBF BASte', best_rbf_bas_test_values, 'Racional BASte', best_rkf_bas_test_values, alpha=0.05)
+else:
+    perform_wilcoxon_signed_rank_test('RBF BASte', best_rbf_bas_test_values, 'Racional BASte', best_rkf_bas_test_values, alpha=0.05)
 
 plot_double_boxplot('RBF', best_rbf_itr_test_values, 'Racional', best_rkf_itr_test_values, 'teste-itr', xlabel='Abordagem', ylabel='Porcentagem')
-perform_shapiro_wilk_test('RBF ITRte', best_rbf_itr_test_values, alpha=0.05)
-perform_shapiro_wilk_test('Racional ITRte', best_rkf_itr_test_values, alpha=0.05)
-perform_wilcoxon_signed_rank_test('RBF ITRte', best_rbf_itr_test_values, 'Racional ITRte', best_rkf_itr_test_values, alpha=0.05)
+s1 = perform_shapiro_wilk_test('RBF ITRte', best_rbf_itr_test_values, alpha=0.05)
+s2 = perform_shapiro_wilk_test('Racional ITRte', best_rkf_itr_test_values, alpha=0.05)
+if s1 and s2:
+    perform_paired_t_test('RBF ITRte', best_rbf_itr_test_values, 'Racional ITRte', best_rkf_itr_test_values, alpha=0.05)
+else:
+    perform_wilcoxon_signed_rank_test('RBF ITRte', best_rbf_itr_test_values, 'Racional ITRte', best_rkf_itr_test_values, alpha=0.05)
 
 plot_double_boxplot('RBF', best_rbf_nsv_test_values, 'Racional', best_rkf_nsv_test_values, 'teste-nsv', xlabel='Abordagem', ylabel='Porcentagem')
-perform_shapiro_wilk_test('RBF NSVte', best_rbf_nsv_test_values, alpha=0.05)
-perform_shapiro_wilk_test('Racional NSVte', best_rkf_nsv_test_values, alpha=0.05)
-perform_wilcoxon_signed_rank_test('RBF NSVte', best_rbf_nsv_test_values, 'Racional NSVte', best_rkf_nsv_test_values, alpha=0.05)
+s1 = perform_shapiro_wilk_test('RBF NSVte', best_rbf_nsv_test_values, alpha=0.05)
+s2 = perform_shapiro_wilk_test('Racional NSVte', best_rkf_nsv_test_values, alpha=0.05)
+if s1 and s2:
+    perform_paired_t_test('RBF NSVte', best_rbf_nsv_test_values, 'Racional NSVte', best_rkf_nsv_test_values, alpha=0.05)
+else:
+    perform_wilcoxon_signed_rank_test('RBF NSVte', best_rbf_nsv_test_values, 'Racional NSVte', best_rkf_nsv_test_values, alpha=0.05)

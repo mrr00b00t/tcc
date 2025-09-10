@@ -105,4 +105,5 @@ def main():
         f'{folder}.csv', index=False, sep=';'
     )
             
-if __name__ == '__main__': main()
+if __name__ == '__main__':
+    main()

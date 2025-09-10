@@ -1,9 +1,12 @@
+from pmlb import fetch_data
+
+
 PREFIX = 'bas'
 CS = [0.03125, 0.125, 0.5, 2, 8, 32, 128, 512, 2048]
 MIN_GAMMA = 1e-8
 MAX_GAMMA = 1e4
 NS_COEFS = [3, 4, 5]
-DSETS = ['pima']
+DSETS = ['bupa']
 NS_SPLITS = [5]
 TEST_SIZES = [0.2]
 SEEDS = [
@@ -26,7 +29,6 @@ SVC_MAX_ITER = 1800
 if __name__ == '__main__':
 
     for dset in DSETS:
-        from pmlb import fetch_data
         
         X, y = fetch_data(dataset_name=dset, return_X_y=True, local_cache_dir='datasets')
         
